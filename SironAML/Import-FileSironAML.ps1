@@ -6,6 +6,9 @@ Skripts paņem no theWall in*.txt datnes, tās nokonvertē uz UTF-8 , iekopē no
 Usage:
 Import-FileSironAML.ps1 [-Test] [-ShowConfig] [-V] [<CommonParameters>]
 
+.PARAMETER WallPath
+Override wall import directory path given in config file. Set parameter NoEncoding to true.
+
 .PARAMETER NoEncoding
 Script not change input files encoding. Use this switch if you know for sure input files are encoded in pure UTF-8.
 
@@ -23,10 +26,18 @@ Import-FileSironAML.ps1 -NoEncoding
 
 .NOTES
 	Author:	Viesturs Skila
-	Version: 1.3.8
+	Version: 1.4.0
 #>
 [CmdletBinding()] 
 param (
+    [ValidateScript( {
+        if ( -NOT ( $_ | Test-Path -PathType Container) ) {
+            Write-Host "Directory does not exist"
+            throw
+        }#endif
+        return $True
+    } ) ]
+    [System.IO.FileInfo]$WallPath,
     [switch]$NoEncoding,
     [switch]$Test,
     [switch]$ShowConfig,
@@ -40,7 +51,7 @@ begin {
     # ZEMĀK NEKO NEMAINĪT!!!
     ------------------------------------------------------------------------------------------------------#>
     #Skripta tehniskie mainīgie
-	$CurVersion = "1.3.8"
+	$CurVersion = "1.4.0"
     $ScriptWatch = [System.Diagnostics.Stopwatch]::startNew()
     #skripta update vajadzībām
     $__ScriptName = $MyInvocation.MyCommand
@@ -443,7 +454,7 @@ begin {
         Write-Warning "[Check] Config JSON file [$jsonFileCfg] not found."
 
         #No cfg template izveidojam objektu ar vērtībām
-        $CfgTmpl | Add-Member -MemberType NoteProperty -Name 'WallSharePath' -Value '\\POSEIDON\SIRON' -Force
+        $CfgTmpl | Add-Member -MemberType NoteProperty -Name 'WallSharePath' -Value 'C:\TEMP' -Force
         $CfgTmpl | Add-Member -MemberType NoteProperty -Name 'SironAMLBatchCommand' -Value 'start_scoring.bat 0001' -Force
         $CfgTmpl | Add-Member -MemberType NoteProperty -Name 'SironAMLBatchCommandArgument' -Value '' -Force
 
@@ -467,7 +478,13 @@ begin {
 
     $Cfg=[ordered]@{}
     $Cfg.Add("SironAMLHomePath",$SironAMLHomePath)
-    $Cfg.Add("WallSharePath",$_Cfg.WallSharePath)
+
+    if ($WallPath) {
+        $Cfg.Add("WallSharePath",$WallPath)
+        $NoEncoding = $true
+    } else {
+        $Cfg.Add("WallSharePath",$_Cfg.WallSharePath)
+    }
     $Cfg.Add("SironDataInputPath","$SironAMLHomePath\client\0001\data\input")
     $Cfg.Add("SironAMLBatchPath","$SironAMLHomePath\system\scoring\batch")
     $Cfg.Add("SironImportLogFileName","$SironAMLHomePath\client\0001\log\scoring\retcode_SCORE_ALL.txt")
